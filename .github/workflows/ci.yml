@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Testar aplicação
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: |
+            backend/pom.xml
+            backend/.mvn/wrapper/maven-wrapper.properties
+
+      - name: Testar backend
+        working-directory: backend
+        run: bash ./mvnw -B -ntp test
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Validar frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+
+      - name: Construir imagem Docker
+        run: docker build -t fintech-hr-ci .
+
+      - name: Testar site e API no container
+        shell: bash
+        run: |
+          container=fintech-hr-smoke
+          base_url=http://127.0.0.1:8080
+          html="$RUNNER_TEMP/fintech-hr.html"
+
+          docker run -d --name "$container" -p 127.0.0.1:8080:8080 fintech-hr-ci
+          trap 'docker logs "$container" || true; docker rm -f "$container"' EXIT
+
+          curl -fsS --max-time 5 --retry 30 --retry-all-errors --retry-delay 2 "$base_url/" -o "$html"
+          grep -Fq '<title>Fintech HR</title>' "$html"
+          curl -fsS --max-time 5 "$base_url/styles/global.css" -o /dev/null
+          curl -fsS --max-time 5 "$base_url/employees" | jq -e 'type == "array"'
