@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
@@ -61,3 +61,35 @@ jobs:
           grep -Fq '<title>Fintech HR</title>' "$html"
           curl -fsS --max-time 5 "$base_url/styles/global.css" -o /dev/null
           curl -fsS --max-time 5 "$base_url/employees" | jq -e 'type == "array"'
+
+  deploy:
+    name: Solicitar deploy no Render
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Enviar o SHA aprovado
+        shell: bash
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [[ -z "$RENDER_DEPLOY_HOOK" ]]; then
+            echo '::error::Configure o segredo RENDER_DEPLOY_HOOK nas configurações do repositório.'
+            exit 1
+          fi
+
+          status=$(curl --fail --silent --show-error --max-time 30 \
+            --output /dev/null --write-out '%{http_code}' --request POST \
+            --url-query "ref=$GITHUB_SHA" "$RENDER_DEPLOY_HOOK")
+
+          case "$status" in
+            200|202)
+              printf 'Render aceitou a solicitação para %s (HTTP %s).\n' "$GITHUB_SHA" "$status"
+              ;;
+            *)
+              echo "::error::Resposta inesperada do hook do Render (HTTP $status)."
+              exit 1
+              ;;
+          esac

@@ -32,3 +32,15 @@ Na máquina local, o `actionlint` aprovou o YAML. Em Linux via Docker, a suíte 
 Durante o teste, o `curl` recebeu `Empty reply from server` enquanto o Spring iniciava. O script tentou de novo automaticamente e passou quando a aplicação ficou pronta.
 
 A execução no runner do GitHub e os gatilhos reais serão confirmados na validação do fluxo. Esta etapa foi registrada em um commit local.
+
+## Etapa 3 — Gatilho de deploy no Render
+
+> Subi tudo para a main no repositório e vou configurar o Render agora
+
+O GitHub Actions confirmou a CI do push `ea0f2e3` na `main`. Os testes do backend, a validação do frontend, o build Docker e o teste do container passaram na [execução 42743276136](https://github.com/NicolasIsepe/fintech-hr-cicd/actions/runs/42743276136).
+
+O workflow ganhou um job `deploy` que depende do sucesso de `ci` e roda em `push` na `refs/heads/main`. Ele usa o segredo `RENDER_DEPLOY_HOOK` para enviar um POST com `ref=$GITHUB_SHA`. O log mostra o SHA e o status aceito pelo Render. HTTP 200 ou 202 confirma a solicitação de deploy. A publicação é verificada separadamente no painel do Render.
+
+O `actionlint` passou. Um teste local do script com um hook simulado confirmou que o POST manteve a chave na query e enviou o SHA completo em `ref`. O script aceitou HTTP 200 e 202 e falhou com HTTP 302, HTTP 404 e com o segredo ausente. Nenhum hook real foi usado no teste.
+
+No Render, conecte o repositório pelo GitHub e selecione a branch `main`, runtime Docker, contexto na raiz, `./Dockerfile`, `PORT=8080` e health check em `/`. Deixe o Auto-Deploy em **Off**. Copie a URL completa do Deploy Hook para o segredo de repositório `RENDER_DEPLOY_HOOK` no GitHub. O deploy inicial criado pelo Render serve para verificar a configuração do serviço. A confirmação do deploy acionado pelo workflow e do SHA publicado fica para a etapa 4.
