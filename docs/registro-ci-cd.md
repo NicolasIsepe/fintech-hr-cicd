@@ -25,7 +25,7 @@ Abra `http://localhost:8080/` e recarregue `http://localhost:8080/#/employees` n
 
 > Dê continuidade para a próxima etapa, desenvolvimento do pipeline de CI.
 
-O workflow `.github/workflows/ci.yml` roda em pull requests com destino à `main` e em pushes na `main`. O job usa Ubuntu 24.04, Java 21 e Node 24. O Maven roda a suíte existente, `npm ci` instala as dependências do frontend e o ESLint verifica o código. O Dockerfile compila o frontend com TypeScript e Vite e monta a imagem final. O último passo inicia um container, verifica o título da página, o CSS e o array JSON da API, e remove o container ao terminar.
+O workflow `.github/workflows/ci-cd.yml` roda em pull requests com destino à `main` e em pushes na `main`. O job usa Ubuntu 24.04, Java 21 e Node 24. O Maven roda a suíte existente, `npm ci` instala as dependências do frontend e o ESLint verifica o código. O Dockerfile compila o frontend com TypeScript e Vite e monta a imagem final. O último passo inicia um container, verifica o título da página, o CSS e o array JSON da API, e remove o container ao terminar.
 
 Na máquina local, o `actionlint` aprovou o YAML. Em Linux via Docker, a suíte Maven passou com 24 testes, 0 falhas, 0 erros e 0 ignorados. O ESLint terminou com código 0. O build Docker passou e o próprio script do workflow confirmou o título `Fintech HR`, o CSS e o retorno de `/employees` como um array JSON.
 
